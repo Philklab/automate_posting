@@ -107,7 +107,7 @@ def main():
     package_path.write_text(json.dumps(package, indent=2, ensure_ascii=False), encoding="utf-8")
 
     try:
-        raise_if_invalid(Path(out_dir) / "post_package.json")
+        raise_if_invalid(package_path)
         print("✅ Validation OK")
     except ValidationError as e:
         print(str(e))

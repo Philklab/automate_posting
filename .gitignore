@@ -10,12 +10,20 @@ logs/
 # --- Generated data ---
 data/**
 !data/.gitkeep
-!data/out/**
-data/out/**/media/*
+
+# Keep only the JSON package(s)
+!data/out/**/post_package.json
+
+# Optional: keep an input text meta (if you want it versioned)
+!data/in/meta.txt
+
+# Never commit media binaries
+data/in/media/**
 data/out/**/media/**
 
 output/
 tmp/
+
 
 # --- OS / editor noise ---
 .DS_Store

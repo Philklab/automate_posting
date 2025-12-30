@@ -17,25 +17,17 @@ class ValidationResult:
     errors: List[str]
 
 
+# Matches your actual generated schema
 REQUIRED_TOP_LEVEL_KEYS = [
-    "version",
-    "created_utc",
-    "media",
-    "meta",
-    "platforms",
-]
-
-REQUIRED_META_KEYS = [
+    "id",
     "title",
     "description",
+    "media",
+    "platforms",
+    "schedule",
 ]
 
-REQUIRED_MEDIA_KEYS = [
-    "video",
-]
-
-# Platforms you currently plan to support (expand later)
-KNOWN_PLATFORMS = {"youtube", "reddit", "instagram", "facebook", "tiktok"}
+REQUIRED_MEDIA_KEYS = ["video"]
 
 
 def _as_path(base_dir: Path, maybe_path: Any) -> Optional[Path]:
@@ -63,11 +55,6 @@ def load_post_package(package_path: Path) -> Dict[str, Any]:
 
 
 def validate_post_package(package_path: Path) -> ValidationResult:
-    """
-    Validate the generated post_package.json file and referenced assets.
-
-    package_path: path to .../post_package.json
-    """
     errors: List[str] = []
     base_dir = package_path.parent
 
@@ -77,23 +64,31 @@ def validate_post_package(package_path: Path) -> ValidationResult:
     except ValidationError as e:
         return ValidationResult(ok=False, errors=[str(e)])
 
-    # 2) Required keys
+    # 2) Required top-level keys
     for k in REQUIRED_TOP_LEVEL_KEYS:
         if k not in data:
             errors.append(f"Missing top-level key: '{k}'")
 
-    # 3) meta validation
-    meta = data.get("meta")
-    if not isinstance(meta, dict):
-        errors.append("meta must be an object/dict")
-        meta = {}
+    # 3) id/title/description validation
+    _id = data.get("id")
+    if not isinstance(_id, str) or not _id.strip():
+        errors.append("id must be a non-empty string")
 
-    for k in REQUIRED_META_KEYS:
-        v = meta.get(k)
-        if not isinstance(v, str) or not v.strip():
-            errors.append(f"meta.{k} must be a non-empty string")
+    title = data.get("title")
+    if not isinstance(title, str) or not title.strip():
+        errors.append("title must be a non-empty string")
 
-    # 4) media validation
+    desc = data.get("description")
+    if not isinstance(desc, str) or not desc.strip():
+        errors.append("description must be a non-empty string")
+
+    # 4) hashtags (optional but if present must be list[str])
+    hashtags = data.get("hashtags", None)
+    if hashtags is not None:
+        if not isinstance(hashtags, list) or not all(isinstance(h, str) for h in hashtags):
+            errors.append("hashtags must be a list of strings (e.g. ['#tag1', '#tag2'])")
+
+    # 5) media validation
     media = data.get("media")
     if not isinstance(media, dict):
         errors.append("media must be an object/dict")
@@ -109,18 +104,16 @@ def validate_post_package(package_path: Path) -> ValidationResult:
     elif not video_path.exists():
         errors.append(f"media.video file not found: {video_path}")
 
-    # Optional thumbnail
     thumb_path = _as_path(base_dir, media.get("thumbnail"))
     if thumb_path is not None and not thumb_path.exists():
         errors.append(f"media.thumbnail file not found: {thumb_path}")
 
-    # 5) platforms validation
+    # 6) platforms validation
     platforms = data.get("platforms")
     if not isinstance(platforms, dict):
         errors.append("platforms must be an object/dict")
         platforms = {}
 
-    # Normalize “enabled” detection for any platform object
     enabled_platforms: List[str] = []
     for name, cfg in platforms.items():
         if not isinstance(name, str):
@@ -133,24 +126,29 @@ def validate_post_package(package_path: Path) -> ValidationResult:
         if enabled is True:
             enabled_platforms.append(name)
 
-        # Gentle warning if unknown platform key is used (not a hard error)
-        # We won't add as error; we keep it future-proof.
-        # If you want strict mode later, flip this into an error.
-        if name.lower() not in KNOWN_PLATFORMS:
-            pass
+        # platform-specific checks (light but useful)
+        if name.lower() == "reddit" and enabled is True:
+            sub = cfg.get("subreddit")
+            if not isinstance(sub, str) or not sub.strip():
+                errors.append("platforms.reddit.subreddit must be a non-empty string when reddit is enabled")
+
+        if name.lower() == "youtube" and enabled is True:
+            vis = cfg.get("visibility", "public")
+            if vis not in {"public", "unlisted", "private"}:
+                errors.append("platforms.youtube.visibility must be one of: public, unlisted, private")
 
     if len(enabled_platforms) == 0:
         errors.append("No platform enabled. Set at least one: platforms.<name>.enabled = true")
 
-    # 6) version sanity (non-empty)
-    version = data.get("version")
-    if not isinstance(version, str) or not version.strip():
-        errors.append("version must be a non-empty string")
+    # 7) schedule validation
+    schedule = data.get("schedule")
+    if not isinstance(schedule, dict):
+        errors.append("schedule must be an object/dict")
+        schedule = {}
 
-    # 7) created_utc sanity (number)
-    created = data.get("created_utc")
-    if not isinstance(created, (int, float)):
-        errors.append("created_utc must be a unix timestamp number (int/float)")
+    publish_at = schedule.get("publish_at", None)
+    if publish_at is not None and not (isinstance(publish_at, str) and publish_at.strip()):
+        errors.append("schedule.publish_at must be null or a non-empty string (ISO datetime recommended)")
 
     return ValidationResult(ok=(len(errors) == 0), errors=errors)
 
