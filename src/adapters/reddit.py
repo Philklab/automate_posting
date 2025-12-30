@@ -14,13 +14,14 @@ def _get(d: Dict[str, Any], path: str, default=None):
 
 
 def run(package: Dict[str, Any], dry_run: bool = True) -> None:
-    targets = package.get("targets", {})
-    cfg = targets.get("reddit", {})
+    cfg = package.get("platforms", {}).get("reddit", {})
+
     if not cfg.get("enabled", False):
         return
 
     subreddit = _get(cfg, "subreddit") or "(missing subreddit)"
-    title = _get(cfg, "title") or _get(package, "title") or "(missing title)"
+    title = _get(cfg, "title_override") or _get(package, "title") or "(missing title)"
+
     post_type = _get(cfg, "type") or "video"  # video | link | text
     flair = _get(cfg, "flair")
 

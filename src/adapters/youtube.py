@@ -15,8 +15,8 @@ def _get(d: Dict[str, Any], path: str, default=None):
 
 
 def run(package: Dict[str, Any], dry_run: bool = True) -> None:
-    targets = package.get("targets", {})
-    cfg = targets.get("youtube", {})
+    cfg = package.get("platforms", {}).get("youtube", {})
+
     if not cfg.get("enabled", False):
         return
 

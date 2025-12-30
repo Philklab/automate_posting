@@ -14,8 +14,7 @@ def _get(d: Dict[str, Any], path: str, default=None):
 
 
 def run(package: Dict[str, Any], dry_run: bool = True) -> None:
-    targets = package.get("targets", {})
-    cfg = targets.get("instagram", {})
+    cfg = package.get("platforms", {}).get("instagram", {})
     if not cfg.get("enabled", False):
         return
 

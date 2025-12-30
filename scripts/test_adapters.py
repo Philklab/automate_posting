@@ -16,6 +16,10 @@ RUN_DIR = PROJECT_ROOT / "data" / "out" / "20251229_221050"  # <-- change if dif
 package_path = RUN_DIR / "post_package.json"
 package = json.loads(package_path.read_text(encoding="utf-8"))
 
+print("TOP KEYS:", list(package.keys()))
+print("TARGETS:", package.get("targets"))
+print("PLATFORMS:", package.get("platforms"))
+
 # Helps adapters resolve relative media paths
 package["package_dir"] = str(RUN_DIR)
 
