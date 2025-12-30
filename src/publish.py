@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from src.adapters import youtube, reddit, instagram  # si ça casse, on ajustera l'import
+from adapters import youtube, reddit, instagram
+
 
 def dispatch(package: Dict[str, Any], package_dir: Path, dry_run: bool = True, platform_filter: Optional[str] = None) -> None:
     """
