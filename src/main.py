@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
+from validate import raise_if_invalid, ValidationError
 
 load_dotenv()
 
@@ -104,6 +105,14 @@ def main():
     # Write package
     package_path = run_out / "post_package.json"
     package_path.write_text(json.dumps(package, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    try:
+        raise_if_invalid(Path(out_dir) / "post_package.json")
+        print("✅ Validation OK")
+    except ValidationError as e:
+        print(str(e))
+        raise SystemExit(2)
+
 
     print("\nGenerated:")
     print(f" - {package_path.resolve()}")

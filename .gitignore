@@ -7,8 +7,13 @@
 logs/
 *.log
 
-# --- Data / generated output ---
-data/
+# --- Generated data ---
+data/**
+!data/.gitkeep
+!data/out/**
+data/out/**/media/*
+data/out/**/media/**
+
 output/
 tmp/
 
