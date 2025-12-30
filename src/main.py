@@ -1,12 +1,23 @@
 import json
 import os
 import shutil
+import argparse
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 from validate import raise_if_invalid, ValidationError
 
 load_dotenv()
+
+def parse_args():
+    p = argparse.ArgumentParser(description="automate_posting (Phase 4 orchestrator)")
+    p.add_argument("--list-runs", action="store_true", help="List existing run folders in data/out and exit.")
+    p.add_argument("--run-id", type=str, default=None, help="Replay an existing run folder in data/out/<run-id>.")
+    p.add_argument("--platform", type=str, default=None, choices=["youtube", "reddit", "instagram"],
+                   help="Run only one platform adapter.")
+    p.add_argument("--dry-run", action="store_true", help="Dry-run (default behavior).")
+    return p.parse_args()
+
 
 def parse_meta(meta_path: Path) -> dict:
     """
@@ -33,6 +44,51 @@ def str_to_bool(s: str, default=False) -> bool:
     return s.lower() in ("1", "true", "yes", "y", "on")
 
 def main():
+    args = parse_args()
+    if args.list_runs:
+        out_dir = Path("data") / "out"
+
+        if not out_dir.exists():
+            print("No data/out folder found.")
+            return
+
+        if args.run_id:
+            package_dir = Path("data") / "out" / args.run_id
+            package_path = package_dir / "post_package.json"
+
+            if not package_path.exists():
+                raise FileNotFoundError(f"post_package.json not found: {package_path}")
+
+            # 1) validate
+            raise_if_invalid(package_path)
+
+            package_dir = Path(output_dir)
+            package_path = package_dir / "post_package.json"
+            pkg = json.loads(package_path.read_text(encoding="utf-8"))
+            dispatch(pkg, package_dir=package_dir, dry_run=True, platform_filter=args.platform)
+
+            # 2) load json
+            pkg = json.loads(package_path.read_text(encoding="utf-8"))
+
+            # 3) dispatch adapters
+            dispatch(pkg, package_dir=package_dir, dry_run=True, platform_filter=args.platform)
+            return
+
+        runs = sorted(
+            [p.name for p in out_dir.iterdir() if p.is_dir()],
+            reverse=True
+        )
+
+        if not runs:
+            print("No runs found in data/out/")
+            return
+
+        print("Available runs:")
+        for r in runs:
+            print(" -", r)
+        
+        return
+
     input_dir = Path(os.getenv("INPUT_DIR", "./data/in"))
     output_dir = Path(os.getenv("OUTPUT_DIR", "./data/out"))
 
