@@ -14,7 +14,7 @@ def _get(d: Dict[str, Any], path: str, default=None):
     return cur
 
 
-def run(package: Dict[str, Any], dry_run: bool = True) -> None:
+def run(package: Dict[str, Any], package_dir: Path, dry_run: bool = True) -> None:
     cfg = package.get("platforms", {}).get("youtube", {})
 
     if not cfg.get("enabled", False):
@@ -24,12 +24,12 @@ def run(package: Dict[str, Any], dry_run: bool = True) -> None:
     description = _get(cfg, "description") or _get(package, "description") or ""
     visibility = _get(cfg, "visibility") or "public"
 
-    video_rel = _get(package, "media.video") or "media/video.mp4"
-    thumb_rel = _get(package, "media.thumbnail")  # optional
+    video_rel = package["media"]["video"]
+    thumb_rel = package["media"].get("thumbnail")
 
     base_dir = Path(_get(package, "package_dir", "."))  # optional; ok if absent
-    video_path = (base_dir / video_rel).resolve() if base_dir else Path(video_rel).resolve()
-    thumb_path = (base_dir / thumb_rel).resolve() if thumb_rel else None
+    video_path = (package_dir / video_rel).resolve()
+    thumb_path = (package_dir / thumb_rel).resolve() if thumb_rel else None
 
     tags = _get(cfg, "tags", []) or []
 

@@ -13,29 +13,29 @@ def _get(d: Dict[str, Any], path: str, default=None):
     return cur
 
 
-def run(package: Dict[str, Any], dry_run: bool = True) -> None:
+def run(package: Dict[str, Any], package_dir: Path, dry_run: bool = True) -> None:
     cfg = package.get("platforms", {}).get("reddit", {})
-
-    if not cfg.get("enabled", False):
+    if not cfg.get("enabled"):
         return
 
-    subreddit = _get(cfg, "subreddit") or "(missing subreddit)"
-    title = _get(cfg, "title_override") or _get(package, "title") or "(missing title)"
+    subreddit = cfg.get("subreddit")
+    title = cfg.get("title_override") or package.get("title", "")
 
     post_type = _get(cfg, "type") or "video"  # video | link | text
     flair = _get(cfg, "flair")
 
-    video_rel = _get(package, "media.video") or "media/video.mp4"
+    video_rel = package["media"]["video"]
     base_dir = Path(_get(package, "package_dir", "."))
-    video_path = (base_dir / video_rel).resolve()
+    video_path = (package_dir / video_rel).resolve()
 
     body = _get(cfg, "body") or ""
     link = _get(cfg, "link")
 
-    print("\n[REDDIT] " + ("DRY-RUN" if dry_run else "REAL-RUN"))
-    print(f"Subreddit : {subreddit}")
-    print(f"Title     : {title}")
-    print(f"Post type : {post_type}")
+    print("\n[REDDIT] DRY-RUN")
+    print(f"Subreddit   : r/{subreddit}")
+    print(f"Title      : {title}")
+    print(f"Video      : {video_path}")
+    print("Body/Notes : (dry-run only)")
 
     if post_type == "video":
         print(f"Media     : {video_path}")
