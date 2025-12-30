@@ -1,0 +1,32 @@
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+
+# --- Logs / runtime outputs ---
+logs/
+*.log
+
+# --- Data / generated output ---
+data/
+output/
+tmp/
+
+# --- OS / editor noise ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
