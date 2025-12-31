@@ -4,19 +4,37 @@ import shutil
 import argparse
 from pathlib import Path
 from datetime import datetime
+
 from dotenv import load_dotenv
 from validate import raise_if_invalid, ValidationError
 from publish import dispatch
 
 load_dotenv()
 
+
 def parse_args():
     p = argparse.ArgumentParser(description="automate_posting (Phase 4 orchestrator)")
+
     p.add_argument("--list-runs", action="store_true", help="List existing run folders in data/out and exit.")
     p.add_argument("--run-id", type=str, default=None, help="Replay an existing run folder in data/out/<run-id>.")
-    p.add_argument("--platform", type=str, default=None, choices=["youtube", "reddit", "instagram"],
-                   help="Run only one platform adapter.")
-    p.add_argument("--dry-run", action="store_true", help="Dry-run (default behavior).")
+    p.add_argument(
+        "--platform",
+        type=str,
+        default=None,
+        choices=["youtube", "reddit", "instagram"],
+        help="Run only one platform adapter.",
+    )
+
+    # Safe default: dry-run always. This flag just makes it explicit.
+    p.add_argument("--dry-run", action="store_true", help="Force dry-run (default behavior).")
+
+    # DANGEROUS: enables real posting when supported by adapters
+    p.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Enable REAL posting (dangerous). Without this flag, nothing is ever published.",
+    )
+
     return p.parse_args()
 
 
@@ -39,13 +57,23 @@ def parse_meta(meta_path: Path) -> dict:
         meta[k.strip()] = v.strip()
     return meta
 
+
 def str_to_bool(s: str, default=False) -> bool:
     if s is None:
         return default
     return s.lower() in ("1", "true", "yes", "y", "on")
 
+
 def main():
     args = parse_args()
+
+    # ---- EXECUTION MODE (SAFETY FIRST) ----
+    # Default: ALWAYS dry-run
+    dry_run = True
+
+    # Real posting is allowed ONLY with --confirm (adapters may still choose to stay dry-run if not implemented)
+    if args.confirm:
+        dry_run = False
 
     # ---- LIST RUNS MODE ----
     if args.list_runs:
@@ -64,7 +92,6 @@ def main():
         print("Available runs:")
         for r in runs:
             print(" -", r)
-
         return
 
     # ---- REPLAY MODE ----
@@ -84,10 +111,10 @@ def main():
             raise SystemExit(2)
 
         pkg = json.loads(package_path.read_text(encoding="utf-8"))
-        dispatch(pkg, package_dir=package_dir, dry_run=True, platform_filter=args.platform)
+        dispatch(pkg, package_dir=package_dir, dry_run=dry_run, platform_filter=args.platform)
         return
 
-
+    # ---- GENERATION MODE ----
     input_dir = Path(os.getenv("INPUT_DIR", "./data/in"))
     output_dir = Path(os.getenv("OUTPUT_DIR", "./data/out"))
 
@@ -96,7 +123,8 @@ def main():
     media_out = run_out / "media"
     media_out.mkdir(parents=True, exist_ok=True)
 
-    print("=== DRY RUN: GENERATE PACKAGE ===")
+    mode_label = "DRY-RUN" if dry_run else "REAL-RUN"
+    print(f"=== {mode_label}: GENERATE PACKAGE ===")
     print(f"Input:  {input_dir.resolve()}")
     print(f"Output: {run_out.resolve()}")
 
@@ -132,25 +160,25 @@ def main():
         "hashtags": [h.strip() for h in meta.get("hashtags", "").split(",") if h.strip()],
         "media": {
             "video": "media/video.mp4",
-            "thumbnail": thumbnail_out_rel
+            "thumbnail": thumbnail_out_rel,
         },
         "platforms": {
             "youtube": {
                 "enabled": str_to_bool(meta.get("youtube_enabled", "true"), True),
-                "visibility": meta.get("youtube_visibility", "public")
+                "visibility": meta.get("youtube_visibility", "public"),
             },
             "reddit": {
                 "enabled": str_to_bool(meta.get("reddit_enabled", "false"), False),
                 "subreddit": meta.get("reddit_subreddit", "electronicmusic"),
-                "title_override": None
+                "title_override": None,
             },
             "instagram": {
-                "enabled": str_to_bool(meta.get("instagram_enabled", "false"), False)
-            }
+                "enabled": str_to_bool(meta.get("instagram_enabled", "false"), False),
+            },
         },
         "schedule": {
-            "publish_at": None
-        }
+            "publish_at": None,
+        },
     }
 
     # If no thumbnail, write null explicitly (JSON None)
@@ -168,9 +196,9 @@ def main():
         print(str(e))
         raise SystemExit(2)
 
-    # ---- DISPATCH (dry-run) ----
+    # ---- DISPATCH ----
     pkg = json.loads(package_path.read_text(encoding="utf-8"))
-    dispatch(pkg, package_dir=run_out, dry_run=True, platform_filter=args.platform)
+    dispatch(pkg, package_dir=run_out, dry_run=dry_run, platform_filter=args.platform)
 
     print("\nGenerated:")
     print(f" - {package_path.resolve()}")
@@ -178,7 +206,8 @@ def main():
     if thumbnail_out_rel:
         print(f" - {(media_out / 'thumbnail.jpg').resolve()}")
 
-    print("\nNext: validate schema + create platform adapters (still dry-run).")
+    print("\nNext: Phase 5 adapters can use --confirm for real posting (dry-run is always the default).")
+
 
 if __name__ == "__main__":
     main()
