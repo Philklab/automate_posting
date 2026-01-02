@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 from adapters import youtube, reddit, instagram
+from outbox.reddit_outbox import generate_reddit_outbox
 
 
 def dispatch(
@@ -18,7 +19,12 @@ def dispatch(
     platforms = package.get("platforms", {})
     if not isinstance(platforms, dict):
         raise ValueError("package.platforms must be a dict")
-    
+
+    # Generate Reddit outbox if reddit is enabled (recommended behavior)
+    reddit_enabled = bool(platforms.get("reddit", {}).get("enabled", False))
+    if reddit_enabled:
+        generate_reddit_outbox(package, package_dir)
+
     def should_run(key: str) -> bool:
         if platform_filter and platform_filter != key:
             return False
