@@ -1,0 +1,97 @@
+# ============================================================
+# METADATA — GOLD STANDARD
+# Source unique de vérité (human-written)
+# ============================================================
+
+schema_version: 1.0
+
+# ------------------------------------------------------------
+# 1) IDENTITÉ DE L’ÉPISODE
+# ------------------------------------------------------------
+episode:
+  episode_id: "DS-009"               # DS-001, DS-008, etc.
+  episode_title: "Funking Punching Bass"     # Titre interne / poétique
+  episode_type: performance_challenge
+  series_primary: "The Dopamine Synth"
+  brand_secondary: "Phil Klab"
+  language: "en"
+
+# episode_type — valeurs autorisées :
+# - sound_explained_fast
+# - performance_challenge
+# - drop_science
+# - humor_bit
+
+# ------------------------------------------------------------
+# 2) CONTENU MUSICAL (SOBRE, NON TECHNIQUE)
+# ------------------------------------------------------------
+music:
+  genres:
+    - Funk house
+    - electronic
+  mood:
+    - energetic
+    - focused
+  tempo_bpm: null        # optionnel
+  key: null              # optionnel (ex: Am, C#m)
+
+# ------------------------------------------------------------
+# 3) SETUP / GEAR (CRÉDIBILITÉ SILENCIEUSE)
+# ------------------------------------------------------------
+gear:
+  synths:
+    - ASM Hydrasynth 49
+    - Arturia MatrixBrute
+    - Korg Wavestate
+  groovebox:
+    - Elektron Digitakt
+  looper:
+    - Boss RC-505
+  mixer: Yamaha MG-12              # optionnel
+  interface: Zoom H1 XLR          # optionnel
+
+# ------------------------------------------------------------
+# 4) DOPAMINE CORE (CŒUR CRÉATIF — LE PLUS IMPORTANT)
+# ------------------------------------------------------------
+dopamine_core:
+  hook_line: ""          # 1 phrase — tension principale
+  core_idea: ""          # ce que tu explores réellement
+  reward_moment: ""      # moment clé / bascule
+  punchline: ""          # conclusion implicite
+
+# Règles dopamine_core :
+# - phrases courtes
+# - présent
+# - pas de jargon
+# - pas de marketing
+# - pas de plateforme mentionnée
+
+# ------------------------------------------------------------
+# 5) INTENTION CTA (PAS LE TEXTE)
+# ------------------------------------------------------------
+cta_intent:
+  primary: youtube_full          # verrouillé
+  secondary: optional_comment    # optional_comment | none
+
+# ------------------------------------------------------------
+# 6) ASSETS (DÉCLARATIF — AIDE À LA VALIDATION)
+# ------------------------------------------------------------
+assets:
+  has_youtube_full: true
+  has_short_01: true
+  has_short_02: true
+
+# ------------------------------------------------------------
+# 7) CONTRÔLE DE RELEASE (BLOQUANT)
+# ------------------------------------------------------------
+release:
+  week_id: "2026-W02"     # ex: 2026-W04
+  package_ready: false   # DOIT être true pour publier
+  allow_skip_week: true
+  notes: ""
+
+# ------------------------------------------------------------
+# 8) ROUTING OVERRIDES (RARE, OPTIONNEL)
+# ------------------------------------------------------------
+routing_overrides:
+  post_reddit_optional_sunday: false
