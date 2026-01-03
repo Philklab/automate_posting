@@ -5,7 +5,8 @@ import argparse
 import yaml
 from pathlib import Path
 from datetime import datetime
-
+from src.editorial import derive_editorial
+from src.outbox import write_outboxes
 from dotenv import load_dotenv
 from validate import raise_if_invalid, ValidationError
 from publish import dispatch
@@ -319,6 +320,15 @@ def main():
     pkg = json.loads(package_path.read_text(encoding="utf-8"))
     dispatch(pkg, package_dir=run_out, dry_run=dry_run, platform_filter=args.platform)
 
+editorial = derive_editorial(meta, package.get("hashtags", []))
+
+# run_dir = chemin data/out/<run_id>
+written = write_outboxes(run_dir, editorial)
+
+if written:
+    print("\nOutbox generated:")
+    for p in written:
+        print(f" - {p}")
 
 if __name__ == "__main__":
     main()
