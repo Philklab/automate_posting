@@ -5,11 +5,16 @@ import argparse
 import yaml
 from pathlib import Path
 from datetime import datetime
-from src.editorial import derive_editorial
-from src.outbox import write_outboxes
+
 from dotenv import load_dotenv
 from validate import raise_if_invalid, ValidationError
 from publish import dispatch
+
+# Phase 9 (editorial expansion)
+# NOTE: these imports assume editorial/ and outbox/ are folders inside src/
+# and you're running: python src/main.py
+from editorial import derive_editorial
+from outbox import write_outboxes
 
 load_dotenv()
 
@@ -36,12 +41,6 @@ def parse_args():
     p.add_argument("--confirm", action="store_true", help="Allow real posting (where supported).")
 
     return p.parse_args()
-
-
-def str_to_bool(s: str, default: bool = False) -> bool:
-    if s is None:
-        return default
-    return str(s).strip().lower() in ("1", "true", "yes", "y", "on")
 
 
 def load_metadata_yaml(meta_path: Path) -> dict:
@@ -309,7 +308,7 @@ def main():
     package_path = run_out / "post_package.json"
     package_path.write_text(json.dumps(package, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # Validate (schema) then dispatch
+    # Validate (schema)
     try:
         raise_if_invalid(package_path)
         print("✅ Validation OK")
@@ -317,18 +316,19 @@ def main():
         print(str(e))
         raise SystemExit(2)
 
+    # -------- Phase 9: editorial + outbox generation (NOW INSIDE main)
+    editorial = derive_editorial(meta, package.get("hashtags", []))
+    written = write_outboxes(str(run_out), editorial)
+
+    if written:
+        print("\nOutbox generated:")
+        for p in written:
+            print(f" - {p}")
+
+    # Dispatch
     pkg = json.loads(package_path.read_text(encoding="utf-8"))
     dispatch(pkg, package_dir=run_out, dry_run=dry_run, platform_filter=args.platform)
 
-editorial = derive_editorial(meta, package.get("hashtags", []))
-
-# run_dir = chemin data/out/<run_id>
-written = write_outboxes(run_dir, editorial)
-
-if written:
-    print("\nOutbox generated:")
-    for p in written:
-        print(f" - {p}")
 
 if __name__ == "__main__":
     main()
