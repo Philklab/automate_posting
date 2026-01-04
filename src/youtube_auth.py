@@ -11,8 +11,10 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 
-DEFAULT_SCOPES: Sequence[str] = ("https://www.googleapis.com/auth/youtube.upload",)
-
+DEFAULT_SCOPES = (
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube",  # <-- nécessaire pour playlistItems.insert
+)
 
 def get_youtube_service(
     client_secrets_path: str,

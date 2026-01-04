@@ -27,7 +27,11 @@ load_dotenv()
 
 def parse_args():
     p = argparse.ArgumentParser(description="automate_posting (orchestrator)")
-
+    p.add_argument(
+        "--force-dispatch",
+        action="store_true",
+        help="Force real dispatch even if outside posting window (TEST ONLY).",
+    )
     p.add_argument("--list-runs", action="store_true", help="List existing run folders in data/out and exit.")
     p.add_argument("--run-id", type=str, default=None, help="Replay an existing run folder in data/out/<run-id>.")
     p.add_argument(
@@ -362,8 +366,11 @@ def main():
             window_key = package.get("schedule", {}).get("window")
 
         if window_key and not can_dispatch(window_key, meta, now):
-            print("⏳ Phase 10: Not in posting window or wrong week. Dispatch skipped.")
-            return
+            if not args.force_dispatch:
+                print("⏳ Phase 10: Not in posting window or wrong week. Dispatch skipped.")
+                return
+            else:
+                print("⚠️ Phase 10 bypassed with --force-dispatch (TEST MODE).")
 
     # Dispatch (always allowed in dry-run so you can test anytime)
     dispatch(package, package_dir=run_out, dry_run=dry_run, platform_filter=args.platform)

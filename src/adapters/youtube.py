@@ -10,6 +10,8 @@ from youtube_auth import get_youtube_service
 
 def run(package: dict, package_dir: str, dry_run: bool = True) -> None:
     cfg = package.get("platforms", {}).get("youtube", {})
+    playlist_id = cfg.get("playlist_id")
+
     if not cfg.get("enabled", False):
         return
 
@@ -68,6 +70,23 @@ def run(package: dict, package_dir: str, dry_run: bool = True) -> None:
 
     video_id = response["id"]
     print(f"Uploaded video id: {video_id}")
+
+        # Optional: add to playlist
+    if playlist_id:
+        youtube.playlistItems().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "playlistId": playlist_id,
+                    "resourceId": {
+                        "kind": "youtube#video",
+                        "videoId": video_id,
+                    },
+                }
+            },
+        ).execute()
+        print(f"Added to playlist: {playlist_id}")
+
 
     # Optional: set thumbnail
     if thumb_path and Path(thumb_path).exists():
