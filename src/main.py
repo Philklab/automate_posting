@@ -180,13 +180,17 @@ def derive_platforms(meta: dict) -> dict:
     rd_subreddit = _get(pb, "reddit", "subreddit", default="electronicmusic")
 
     ig_enabled = bool(_get(pb, "instagram", "enabled", default=False))
+    yt_playlist_id = _get(meta, "youtube", "playlist", "id", default=None)
 
     return {
-        "youtube": {"enabled": yt_enabled, "visibility": yt_visibility},
+        "youtube": {
+            "enabled": yt_enabled,
+            "visibility": yt_visibility,
+            "playlist_id": yt_playlist_id,   # <-- AJOUT ICI
+        },
         "reddit": {"enabled": rd_enabled, "subreddit": rd_subreddit, "title_override": None},
         "instagram": {"enabled": ig_enabled},
     }
-
 
 def list_runs(out_root: Path):
     if not out_root.exists():
