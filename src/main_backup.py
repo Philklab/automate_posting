@@ -6,7 +6,6 @@ import yaml
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
 from dotenv import load_dotenv
 from validate import raise_if_invalid, ValidationError
 from publish import dispatch
@@ -26,7 +25,7 @@ load_dotenv()
 # -----------------------------
 
 def parse_args():
-    p = argparse.ArgumentParser(description="automate_posting (orchestrator)")
+    p = argparse.ArgumentParser(description="automate_posting (Phase 4 orchestrator)")
 
     p.add_argument("--list-runs", action="store_true", help="List existing run folders in data/out and exit.")
     p.add_argument("--run-id", type=str, default=None, help="Replay an existing run folder in data/out/<run-id>.")
@@ -100,7 +99,6 @@ def validate_metadata_semantic(meta: dict, *, require_ready: bool) -> list[str]:
     if et and et not in ALLOWED_EPISODE_TYPES:
         errors.append(f"episode.episode_type invalid: {et}")
 
-    # Enforce readiness only for real runs if you want strict safety
     if require_ready and _get(meta, "release", "package_ready") is not True:
         errors.append("release.package_ready must be true")
 
@@ -108,6 +106,7 @@ def validate_metadata_semantic(meta: dict, *, require_ready: bool) -> list[str]:
 
 
 def derive_description(meta: dict) -> str:
+    # Phase 7-ish: 3 blocks (intention, context/gear, CTA neutral)
     hook = (_get(meta, "dopamine_core", "hook_line", default="") or "").strip()
     idea = (_get(meta, "dopamine_core", "core_idea", default="") or "").strip()
     reward = (_get(meta, "dopamine_core", "reward_moment", default="") or "").strip()
@@ -197,12 +196,14 @@ def list_runs(out_root: Path):
     for r in runs:
         print(f" - {r}")
 
-
-# -----------------------------
-# Phase 8 generator (restored)
-# -----------------------------
-
 def generate_package(meta: dict, input_dir: Path, run_out: Path, *, dry_run: bool) -> tuple[dict, Path]:
+    """
+    Rebuild the missing Phase 8 generator:
+    - copies data/in/media -> data/out/<run_id>/media
+    - builds post_package.json from metadata.yaml-derived fields
+    - returns (package_dict, package_path)
+    """
+    # --- semantic validation before generating anything
     errors = validate_metadata_semantic(meta, require_ready=not dry_run)
     if errors:
         raise RuntimeError("Metadata semantic validation failed:\n- " + "\n- ".join(errors))
@@ -222,28 +223,40 @@ def generate_package(meta: dict, input_dir: Path, run_out: Path, *, dry_run: boo
     media_out = run_out / "media"
     media_out.mkdir(parents=True, exist_ok=True)
 
-    shutil.copy2(video_in, media_out / "video.mp4")
-    shutil.copy2(thumb_in, media_out / "thumbnail.jpg")
+    # copy media
+    video_out = media_out / "video.mp4"
+    thumb_out = media_out / "thumbnail.jpg"
 
+    shutil.copy2(video_in, video_out)
+    shutil.copy2(thumb_in, thumb_out)
+
+    # build package
     episode_id = _get(meta, "episode", "episode_id", default=None) or f"package_{run_out.name}"
     title = _get(meta, "episode", "episode_title", default="Untitled") or "Untitled"
 
     description = derive_description(meta)
     if not description.strip():
-        raise RuntimeError("Derived description is empty (should not happen if metadata is valid).")
+        raise RuntimeError("Derived description is empty (should be impossible if metadata is valid).")
 
     hashtags = derive_hashtags(meta)
     platforms = derive_platforms(meta)
 
-    # With current single input video.mp4, treat it as the "full" window.
-    schedule = {"publish_at": None, "window": "full"}
+    # Phase 10 expects schedule.window for youtube/instagram gating.
+    # With the current single-input video model, we treat it as "full".
+    schedule = {
+        "publish_at": None,
+        "window": "full",
+    }
 
     package = {
         "id": episode_id,
         "title": title,
         "description": description,
         "hashtags": hashtags,
-        "media": {"video": "media/video.mp4", "thumbnail": "media/thumbnail.jpg"},
+        "media": {
+            "video": "media/video.mp4",
+            "thumbnail": "media/thumbnail.jpg",
+        },
         "platforms": platforms,
         "schedule": schedule,
     }
@@ -252,7 +265,6 @@ def generate_package(meta: dict, input_dir: Path, run_out: Path, *, dry_run: boo
     package_path.write_text(json.dumps(package, indent=2, ensure_ascii=False), encoding="utf-8")
 
     return package, package_path
-
 
 # -----------------------------
 # Main
@@ -297,11 +309,11 @@ def main():
         # Load package
         pkg = json.loads(package_path.read_text(encoding="utf-8"))
 
-        # Load metadata.yaml (needed for Phase 10 guardrail in real posting)
+        # Load metadata.yaml (needed for Phase 10 guardrail even in replay)
         meta_path = input_dir / "metadata.yaml"
         meta = load_metadata_yaml(meta_path)
 
-        # Phase 10 guardrail: ONLY block in REAL runs (--confirm), and only for YT/IG
+        # Phase 10 guardrail (ONLY for real posting)
         if not dry_run:
             now = datetime.now(ZoneInfo("America/New_York"))
 
@@ -309,13 +321,14 @@ def main():
             if args.platform in (None, "youtube", "instagram"):
                 window_key = pkg.get("schedule", {}).get("window")
 
-            # Reddit is manual/outbox-first: never block
+            # Reddit is manual/outbox-first: never block dispatch here.
             if window_key and not can_dispatch(window_key, meta, now):
                 print("⏳ Phase 10: Not in posting window or wrong week. Dispatch skipped.")
                 return
 
         dispatch(pkg, package_dir=run_out, dry_run=dry_run, platform_filter=args.platform)
         return
+
 
     # ---- GENERATION MODE
     print("=== DRY-RUN: GENERATE PACKAGE ===" if dry_run else "=== REAL-RUN: GENERATE PACKAGE ===")
@@ -325,12 +338,16 @@ def main():
     meta_path = input_dir / "metadata.yaml"
     meta = load_metadata_yaml(meta_path)
 
-    # Create new run folder
+    # Generate new run folder (reuse your existing function if you have one)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_out = out_root / run_id
     run_out.mkdir(parents=True, exist_ok=True)
 
-    # Generate package
+    # --- IMPORTANT:
+    # Here you MUST reuse your existing Phase 8 generator code that builds `package`
+    # and writes post_package.json + copies media, etc.
+    #
+    # Example (replace with your real function/logic):
     package, package_path = generate_package(meta, input_dir, run_out, dry_run=dry_run)
 
     # Validate
@@ -349,21 +366,15 @@ def main():
         for p in written:
             print(f" - {p}")
 
-    # Phase 10 guardrail: ONLY block in REAL runs (--confirm), only for YT/IG (never reddit)
-    if not dry_run:
-        now = datetime.now(ZoneInfo("America/New_York"))
+    # Phase 10 guardrail
+    now = datetime.now(ZoneInfo("America/New_York"))
+    window_key = package.get("schedule", {}).get("window")
+    if window_key and not can_dispatch(window_key, meta, now):
+        print("⏳ Phase 10: Not in posting window or wrong week. Dispatch skipped.")
+        return
 
-        window_key = None
-        if args.platform in (None, "youtube", "instagram"):
-            window_key = package.get("schedule", {}).get("window")
-
-        if window_key and not can_dispatch(window_key, meta, now):
-            print("⏳ Phase 10: Not in posting window or wrong week. Dispatch skipped.")
-            return
-
-    # Dispatch (always allowed in dry-run so you can test anytime)
+    # Dispatch
     dispatch(package, package_dir=run_out, dry_run=dry_run, platform_filter=args.platform)
-
 
 if __name__ == "__main__":
     main()
